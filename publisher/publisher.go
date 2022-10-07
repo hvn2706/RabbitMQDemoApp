@@ -2,31 +2,40 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 
+	fiber "github.com/gofiber/fiber/v2"
 	"github.com/streadway/amqp"
 )
 
+var conn *amqp.Connection
+var ch *amqp.Channel
+var queue amqp.Queue
+
+// Main Function
+
 func main() {
-	fmt.Println("Bunny test mtfk!!!")
+	init_connection()
+	defer close_connection()
+	start_server()
+}
 
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+// RabbitMQ Functions
 
+func init_connection() {
+	var err error
+	conn, err = amqp.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
 		fmt.Println(err)
 		panic(err)
 	}
-	defer conn.Close()
-
-	fmt.Println("Connected to RabbitMQ")
-
-	ch, err := conn.Channel()
+	ch, err = conn.Channel()
 	if err != nil {
 		fmt.Println(err)
 		panic(err)
 	}
-	defer ch.Close()
-
-	q, err := ch.QueueDeclare(
+	queue, err = ch.QueueDeclare(
 		"test_queue", // name
 		false,        // durable
 		false,        // delete when unused
@@ -34,29 +43,55 @@ func main() {
 		false,        // no-wait
 		nil,          // arguments
 	)
-
 	if err != nil {
 		fmt.Println(err)
 		panic(err)
 	}
-
-	fmt.Println(q)
-
-	err = ch.Publish(
-		"",     // exchange
-		q.Name, // routing key
-		false,  // mandatory
-		false,  // immediate
-		amqp.Publishing{
-			ContentType: "text/plain",
-			Body:        []byte("Có thể nói ..."),
-		},
-	)
-
-	if err != nil {
-		fmt.Println(err)
-		panic(err)
-	}
-
-	fmt.Println("Message sent")
+	fmt.Println("Connected to RabbitMQ")
 }
+
+func close_connection() {
+	ch.Close()
+	conn.Close()
+}
+
+func publish_msg(msg amqp.Publishing) {
+	err := ch.Publish(
+		"",         // exchange
+		queue.Name, // routing key
+		false,      // mandatory
+		false,      // immediate
+		msg,
+	)
+	if err != nil {
+		fmt.Println(err)
+		panic(err)
+	}
+}
+
+// Fiber Functions
+
+func start_server() {
+	app := fiber.New()
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.SendFile("publisher/index.html")
+	})
+	app.Post("/upload", upload)
+	log.Fatal(app.Listen(":3000"))
+}
+
+func upload(c *fiber.Ctx) error {
+	err := ioutil.WriteFile("images/sample.png", c.Body(), 0644)
+	if err != nil {
+		panic(err)
+	}
+	publish_msg(amqp.Publishing{
+		ContentType: "text/plain",
+		Body:        []byte("images/sample.png"),
+	})
+	return c.SendString("ok")
+}
+
+// Helper Functions
+
+func UNUSED(x ...interface{}) {}
