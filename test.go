@@ -17,6 +17,7 @@ import (
 type Data struct {
 	name string `json:"name"`
 	done bool   `json:"done"`
+	byte []byte `json:"byte"`
 }
 
 var myQueue = make(map[string]Data)
@@ -24,7 +25,13 @@ var myQueue = make(map[string]Data)
 func grayScaleImage(c *fiber.Ctx) error {
 	name := c.Params("name")
 	addToQueue(name)
+	myQueue[name] = Data{name: name, done: false, byte: c.Body()}
+	createConsumer()
 
+	return c.SendString("Image uploaded successfully!")
+}
+
+func createConsumer() {
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 
 	if err != nil {
@@ -61,7 +68,7 @@ func grayScaleImage(c *fiber.Ctx) error {
 			log.Printf("Processing: %s", name)
 
 			//Decode the image
-			imgSrc, _, err := image.Decode(bytes.NewReader(c.Body()))
+			imgSrc, _, err := image.Decode(bytes.NewReader(myQueue[name].byte))
 			if err != nil {
 				panic(err.Error())
 			}
@@ -94,9 +101,9 @@ func grayScaleImage(c *fiber.Ctx) error {
 			defer newfile.Close()
 			png.Encode(newfile, grayScale)
 			log.Printf("Done: %s", name)
+			myQueue[name] = Data{name: name, done: true, byte: myQueue[name].byte}
 		}
 	}()
-	return c.SendString("Image uploaded successfully!")
 }
 
 func addToQueue(name string) {
@@ -146,8 +153,6 @@ func addToQueue(name string) {
 	}
 
 	fmt.Println("Added to queue: " + name)
-
-	myQueue[name] = Data{name: name, done: false}
 }
 
 func getQueue(c *fiber.Ctx) error {

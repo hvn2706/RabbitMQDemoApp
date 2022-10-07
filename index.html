@@ -5,11 +5,23 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <style>
+      table,
+      td,
+      th {
+        border: 1px solid black;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 50%;
+        margin-top: 50px;
+      }
+    </style>
     <title>Document</title>
   </head>
   <body>
-    <h1>My First Heading</h1>
-
+    <h1>Upload an image</h1>
     <input type="file" id="file" name="file" accept="image/png, image/jpeg" />
 
     <div>
@@ -18,6 +30,17 @@
     <div>
       <button type="submit">Submit</button>
     </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Index</th>
+          <th>Image Name</th>
+          <th>Download</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
     <script>
       const uploaded_img = document.getElementById("uploaded-img");
       const file = document.getElementById("file");
@@ -47,10 +70,15 @@
           .catch((err) => console.log(err));
       });
 
-      function update() {
+      async function update() {
         fetch("/queue")
           .then((res) => res.json())
-          .then((data) => {});
+          .then((data) => {
+            console.log(data);
+
+            const table_body = document.getElementById("table-body");
+            table_body.innerHTML = "";
+          });
       }
 
       setInterval(update, 3000);
