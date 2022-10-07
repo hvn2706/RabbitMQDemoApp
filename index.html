@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Document</title>
+  </head>
+  <body>
+    <h1>My First Heading</h1>
+
+    <input type="file" id="file" name="file" accept="image/png, image/jpeg" />
+
+    <div>
+      <img id="uploaded-img" src="" alt="" />
+    </div>
+    <div>
+      <button type="submit">Submit</button>
+    </div>
+    <script>
+      const uploaded_img = document.getElementById("uploaded-img");
+      const file = document.getElementById("file");
+      const submit = document.querySelector("button[type=submit]");
+
+      file.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          uploaded_img.src = reader.result;
+        };
+
+        reader.readAsDataURL(file);
+      });
+
+      submit.addEventListener("click", (e) => {
+        e.preventDefault();
+        console.log(file.files[0]);
+
+        fetch(`/upload/${file.files[0].name}`, {
+          method: "POST",
+          body: file.files[0],
+        })
+          .then((res) => res.json())
+          .then((data) => console.log(data))
+          .catch((err) => console.log(err));
+      });
+
+      function update() {
+        fetch("/queue")
+          .then((res) => res.json())
+          .then((data) => {});
+      }
+
+      setInterval(update, 3000);
+    </script>
+  </body>
+</html>
